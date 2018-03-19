@@ -1,0 +1,19 @@
+The bacul is the most popular data backup system. The bacula develodep as client server architecture.
+It has scheduling capabilty to perform backup at the predefined time. Bacula supports full backup, differential as well as incremental.
+    differential = full + full_rest
+    incremental = full + rest 
+
+It has four main services:
+    Bacula Director (DIR): Control plain of back up system, designed as separate service.
+    Storage Daemon (SD): Data plain which data r/w managment command received from bacula director.
+    File Director: Agent hosted in client side to execute bacula director commands.
+    Bconsole: Director managment mechnism.
+
+Follow to the link to perform installation "https://www.digitalocean.com/community/tutorials/how-to-install-bacula-server-on-centos-7"
+Note that all services passwords should in all services.
+
+Follow the configuration example notes to find the pattern of configuration between director and file director.
+See graph for compleat understanding.
+
+
+![Alt text](bacula2.png?raw=true "Title")

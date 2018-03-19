@@ -1,1 +1,1 @@
-# notes
+This git repo intented for my learning and my personal linux notes.
