@@ -1,0 +1,11 @@
+---
+  - host: lb
+    sudo: yes
+    user: root
+    roles:
+      - nginx
+      - ssl-crt
+    vars_file:
+      - vars/main.yml
+
+     

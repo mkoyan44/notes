@@ -1,0 +1,14 @@
+# Verify cert
+openssl x509 -in server.crt -noout -text
+
+# pkcs to crt
+openssl pkcs12 -in pathToPkcs.p12 -out ServerCrt.pem -clcerts -nokeys
+# pkcs to key
+openssl pkcs12 -in pathToPkcs.p12 -out ServerKey.key -nocerts -nodes
+
+# pem to pkcs
+openssl pkcs12 -export -inkey ServerKey.key -in ServerCrt.pem -out pathToPkcs.p12
+
+# verify remote server cert
+openssl s_client -connect fqdn:443 
+    

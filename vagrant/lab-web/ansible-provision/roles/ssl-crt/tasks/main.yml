@@ -1,0 +1,18 @@
+---
+  - name: make sure SSL certificate is installed
+    copy:
+      content: '{{ ssl_certificate }}'
+      dest: /etc/ssl/{ domain }_crt.pem
+      owner: root
+      group: root
+      mode: 0644
+   
+  - name: make sure SSL private key is installed
+    copy:
+      content: '{{ ssl_private_key }}'
+      dest: /etc/ssl/{ domain }_key.pem
+      owner: root
+      group: root
+      mode: 0600
+    no_log: true
+  
