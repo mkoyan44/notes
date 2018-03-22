@@ -3,6 +3,7 @@
     name: epel-release
     state: present
     update_cache: yes
+  register: epel_installed
 
 - name: check registered the repository of nginx-release
   shell: rpm -qa | grep nginx-release
@@ -24,6 +25,7 @@
     regexp: "enabled *= *1" 
     replace: "enabled=0"
   ignore_errors: True
+  when: nginx_repo_installed
 
 - name: install_nginx
   yum:
@@ -35,65 +37,50 @@
   notify:
     - start_nginx
 
-- name: copy_src_config
-  when: nginx_installed|success
-  copy:
-    src: h5bp
-    dest: /etc/nginx
-    owner: root
-    group: root
-
 - name: disable_defaulte_site
-  when: nginx_installed|success
   file: 
-    dest: /etc/nginx/sites-enabled/default
+    dest: /etc/nginx/conf.d/default.conf
     state: absent
 
 
-- name: create_site_config_directory
+- name: create_sites_directory
   when: nginx_installed|success
   file: 
-    path: "{{item}}"
-    recurse: yes
-    state: directory
-  with_items: [ "/etc/nginx/sites-available/" ,"/etc/nginx/sites-enabled/"]
-  register: site_dirctory
-
-- name: add_site_config
-  when: site_dirctory|success
-  register: copy_site_config
-  template: 
-    src: sysnet.local.conf 
-    dest: /etc/nginx/sites-available/{{ domain }}.conf
-    owner: root
-    group: root
-
-- name: enable_site_config
-  when: site_dirctory|success
-  file: 
-    src: /etc/nginx/sites-available/{{ domain }}.conf 
-    dest: /etc/nginx/sites-enabled/{{ domain }}.conf 
-    state: link
-
-- name: create_web_root
-  when: nginx_installed|success
-  file: 
-    dest: /var/www/{{ domain }}/public 
+    dest: /etc/nginx/{{ item }}
     mode: 0775 
     state: directory 
     owner: nginx 
     group: nginx
-  notify:
-    - reload_nginx
+  with_items: ['sites-available','sites-enabled']
 
-- name: fix_permissions
-  when: nginx_installed|success
-  file: 
-    dest: /var/www/{{ domain }} 
-    mode: 0775 
-    state: directory 
-    owner: nginx 
-    group: nginx 
-    recurse: yes
-  notify:
-    - reload_nginx
+- name: copy config files
+  copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    mode: 0644 
+    owner: root
+    group: root
+  with_items: 
+    - { src: "proxy.conf", dest: "/etc/nginx/conf.d/proxy.conf"}
+    - { src: "nginx.conf", dest: "/etc/nginx/nginx.conf"}
+  
+- name: add_site_config
+  register: copy_site_config
+  template: 
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: root
+    group: root
+  with_items: 
+    - {src: "lb.conf", dest: "/etc/nginx/sites-available/lb.{{ domain }}.conf"}
+    - {src: "ssl.conf", dest: "/etc/nginx/conf.d/ssl.{{ domain }}.conf"}
+
+- name: enable_site
+  when: copy_site_config
+  file:
+    src: /etc/nginx/sites-available/lb.{{ domain }}.conf
+    dest: /etc/nginx/sites-enabled/lb.{{ domain }}.conf
+    state: link
+  notify: restart_nginx
+  ignore_errors: True
+

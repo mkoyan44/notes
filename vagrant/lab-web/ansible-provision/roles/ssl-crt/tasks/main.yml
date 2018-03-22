@@ -1,18 +1,40 @@
 ---
-  - name: make sure SSL certificate is installed
+  - include_vars: main.yml
+  - name: install SSL crt
     copy:
       content: '{{ ssl_certificate }}'
-      dest: /etc/ssl/{ domain }_crt.pem
+      dest: /etc/ssl/{{ domain }}_crt.pem
       owner: root
       group: root
       mode: 0644
-   
-  - name: make sure SSL private key is installed
+
+  - name: install SSL key
     copy:
       content: '{{ ssl_private_key }}'
-      dest: /etc/ssl/{ domain }_key.pem
+      dest: /etc/ssl/{{ domain }}_key.pem
       owner: root
       group: root
       mode: 0600
     no_log: true
+
+  - name: install dh key
+    copy:
+      content: '{{ ssl_dh }}'
+      dest: /etc/ssl/{{ domain }}_dh.pem
+      owner: root
+      group: root
+      mode: 0644
+
+  - name: copy certificate authority
+    copy:
+      content: '{{ ssl_ca_crt }}'
+      dest: "{{ item }}"
+      owner: root
+      group: root
+      mode: 0644
+    with_items: ["/etc/pki/ca-trust/source/anchors/{{ domain }}_ca.crt","/etc/ssl/{{ domain }}_ca_crt.pem"]
+    register: caInstalled|success
+    notify:
+    - update_ca_store
+
   

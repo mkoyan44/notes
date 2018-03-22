@@ -1,1 +1,4 @@
 vagrant/lab-web/.vagrant
+security/ca/ca
+security/ca/lb1.sysnet.local
+security/ca/sysnet.local

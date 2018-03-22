@@ -1,0 +1,4 @@
+---
+  domain: sysnet.local
+  ssl_key: /etc/ssl/lb.key
+  ssl_crt: /etc/ssl/lb.crt

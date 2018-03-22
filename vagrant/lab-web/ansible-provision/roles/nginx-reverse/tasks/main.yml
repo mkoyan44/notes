@@ -1,0 +1,96 @@
+- name: install_epel_repo
+  yum:
+    name: epel-release
+    state: present
+    update_cache: yes
+  register: epel_installed
+
+- name: check registered the repository of nginx-release
+  shell: rpm -qa | grep nginx-release
+  register: result
+  ignore_errors: True
+  always_run: yes
+  changed_when: no
+
+- name: add repository nginx-release (CentOS6/CentOS7)
+  yum: 
+    name: http://nginx.org/packages/centos/{{ansible_distribution_major_version}}/noarch/RPMS/nginx-release-centos-{{ansible_distribution_major_version}}-0.el{{ansible_distribution_major_version}}.ngx.noarch.rpm
+    state: present
+  when: result|failed
+  register: nginx_repo_installed
+
+- name: disable_the_repository
+  replace: 
+    dest: /etc/yum.repos.d/nginx.repo 
+    regexp: "enabled *= *1" 
+    replace: "enabled=0"
+  ignore_errors: True
+  when: nginx_repo_installed
+
+- name: install_nginx
+  yum:
+    name: nginx
+    enablerepo: nginx
+    state: present
+  when: nginx_repo_installed
+  register: nginx_installed
+  notify:
+    - start_nginx
+
+- name: disable_defaulte_site
+  file: 
+    dest: /etc/nginx/conf.d/default.conf
+    state: absent
+
+- name: create_web_root
+  when: nginx_installed|success
+  file: 
+    dest: /var/www/{{ domain }}
+    mode: 0775 
+    state: directory 
+    owner: nginx 
+    group: nginx
+  notify:
+    - restart_nginx
+
+
+- name: create_sites_directory
+  when: nginx_installed|success
+  file: 
+    dest: /etc/nginx/{{ item }}
+    mode: 0775 
+    state: directory 
+    owner: nginx 
+    group: nginx
+  with_items: ['sites-available','sites-enabled']
+
+- name: copy config files
+  copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    mode: 0644 
+    owner: root
+    group: root
+  with_items: 
+    - { src: "nginx.conf", dest: "/etc/nginx/nginx.conf"}
+    - { src: "static-www/", dest: "/var/www/{{ domain }}"}
+  
+- name: add_site_config
+  register: copy_site_config
+  template: 
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: root
+    group: root
+  with_items: 
+    - {src: "reverse.conf", dest: "/etc/nginx/sites-available/reverse.{{ domain }}.conf"}
+
+- name: enable_site
+  when: copy_site_config
+  file:
+    src: /etc/nginx/sites-available/reverse.{{ domain }}.conf
+    dest: /etc/nginx/sites-enabled/reverse.{{ domain }}.conf
+    state: link
+  notify: restart_nginx
+  ignore_errors: True
+

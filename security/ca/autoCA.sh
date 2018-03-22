@@ -46,6 +46,8 @@ subjectAltName = @alt_names
 
 [alt_names]
 DNS.1 = $fqdn
+DNS.2 = www."$fqdn"
+DNS.3 = *."$fqdn"
 EOF
 }
 
@@ -80,6 +82,8 @@ else
 		fi 
 		openssl req -new -sha256 -nodes -out $PWD/$fqdn/$fqdn.csr -newkey rsa:2048 -keyout $PWD/$fqdn/$fqdn.key -config $confDir/csr.conf
 		openssl x509 -req -in $PWD/$fqdn/$fqdn.csr -CA $PWD/$caDir/$caCrt.pem -CAkey $PWD/$caDir/$caKey.key -CAcreateserial -out $PWD/$fqdn/$fqdn.crt -days 500 -sha256 -extfile $confDir/subjectAltName.conf
+		openssl dhparam -out $PWD/$fqdn/"$fqdn"_dh.pem 1024
+
 	;;
 	'inter-ca'|'ica')
 		echo "Generat and Sign the Intermediate-Certificate authority."

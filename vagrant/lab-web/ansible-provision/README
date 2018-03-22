@@ -1,0 +1,5 @@
+Ansible
+
+1) group_vars/all/vars_file.yml share global variable space across roles.
+2) in case the roles have dependecies they will share vars as well.
+3) 

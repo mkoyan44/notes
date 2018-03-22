@@ -1,11 +1,12 @@
 ---
-  - host: lb
+  - hosts: lb
     sudo: yes
     user: root
     roles:
-      - nginx
-      - ssl-crt
-    vars_file:
-      - vars/main.yml
-
-     
+      - nginx-lb
+  - hosts: frontend
+    sudo: yes
+    user: root
+    roles:
+      - nginx-reverse
+      
