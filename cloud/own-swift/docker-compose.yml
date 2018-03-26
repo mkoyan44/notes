@@ -53,7 +53,7 @@ services:
     restart: always
     environment:
       - MARIADB_ROOT_PASSWORD=owncloud
-      - MARIADB_USERNAME=owncloud
+      - MARIADB_USERNAME= 
       - MARIADB_PASSWORD=owncloud
       - MARIADB_DATABASE=owncloud
       - MARIADB_MAX_ALLOWED_PACKET=128M
