@@ -1,0 +1,90 @@
+version: '2'
+
+volumes:
+  nextcloud:
+  db:
+  swift_data:
+  keystone_db:
+
+services:
+
+  web:
+    image: nginx
+    ports:
+      - 8080:80
+    links:
+      - app
+    volumes:
+      - ./conf.d/nginx.conf:/etc/nginx/nginx.conf:ro
+    volumes_from:
+      - app
+    depends_on:
+      - app
+    restart: always
+
+  app:
+    image: nextcloud:fpm
+    links:
+      - db
+      - redis
+    volumes:
+      - ./conf.d/redis.config.php:/usr/src/nextcloud/config/redis.config.php:ro
+      - nextcloud:/var/www/html
+    depends_on:
+      - db
+      - redis
+    dns:
+      - 8.8.8.8
+    restart: always
+
+  redis: 
+    image: redis
+    restart: always
+
+  db:
+    image: postgres
+    restart: always
+    volumes:
+      - db:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_HOST=db
+      - POSTGRES_PASSWORD=nextcloud
+      - POSTGRES_DB=nextcloud
+      - POSTGRES_USER=nextcloud
+
+  mysql_db:
+    image: mariadb
+    volumes:
+      - keystone_db:/var/lib/mysql
+    environment:
+      - MYSQL_HOST=mysql_db
+      - MYSQL_ROOT_PASSWORD=Class123456
+
+  kstone:
+    depends_on:
+      - mysql_db
+    image: krystism/openstack-keystone
+    hostname: kstone
+    links:
+      - mysql_db
+    ports:
+      - "35357:35357"
+      - "5000:5000"
+    restart: always
+    environment:
+      - OS_TENANT_NAME:admin
+      - OS_USERNAME:admin
+      - OS_PASSWORD:Class123456
+
+  swift:
+    image: serverascode/swift-onlyone
+    ports:
+      - 8081:8080
+    links:
+      - app
+      - kstone
+    volumes:
+      - swift_data:/srv
+      - ./conf.d/proxy-server.conf:/etc/swift/proxy-server.conf
+    depends_on: 
+      - kstone
