@@ -1,0 +1,7 @@
+#!/bin/bash
+git clone https://github.com/openstack/python-swiftclient.git
+cd ./python-swiftclient
+pip install -r requirements.txt
+pip install --upgrade chardet urllib3
+pip install extras markupsafe certifi idna futures
+python setup.py install 
