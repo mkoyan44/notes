@@ -1,0 +1,48 @@
+yum install httpd mod_ssl -y
+yum install ntp -y # it is important to have time sync, if you see error like browser back button try it
+
+
+wget shibbidp,tomcat8 in /opt
+go shib inst home, exec bin/install.sh
+extract tomcat in opt
+ensure java version is 1.8 (openjdk-1.8) may use update-alternative or set env var of JAVA_HOME and PATH
+write down java path in tomcat.systemd file
+uncoment allow section in /opt/tomcat/webapps/{manager,host-manager}/META-INF/context.xml for accessing tomcat manager in 8080 port 
+cp idp.xml to Catalina/localhost/ for deploying shib idp .war app. 
+
+look to server.xml file to enable jsp port conector (jsp is data transf protocol between httpd server and java app)
+
+add user and role in tomcat-user.xml
+    <role rolename="manager-gui"/>
+    <user username="admin" password="111" roles="manager-gui,admin-gui"/>
+
+logs are in logs/process*.log 
+
+# safe to install rootca into jdk store
+keytool -importcert -file /opt/ssl/ca/rootCrt.pem -keystore keystore.jks -alias "Sysnet.local"
+wget https://service_provider/Shibboleth.sso/Metadata  --no-check-certificate to metadata folder
+
+
+# openldap
+yum install openldap 
+
+# cp /usr/share/openldap-servers/DB_CONFIG.example /var/lib/ldap/DB_CONFIG
+# chmod 0600 /var/lib/ldap/DB_CONFIG
+# chown -R ldap:ldap /var/lib/ldap/
+# slaptest
+
+set ca in ldap.conf 
+TLS_CACERTDIR	/etc/openldap/certs
+TLS_CACERT /etc/openldap/certs/rootCrt.pem
+
+create ou like people to authenticate the shib users, set uid,pass,cn,sn,mail attrubutes
+ldapmodify -Y EXTERNAL -H ldapi:/// -f xxx.ldif
+ldapsearch -H ldap:// -x -D "cn=admin,dc=example,dc=com" -w password -b "dc=example,dc=com" -LLL "(uid=jsmith)"
+
+
+# enble ldaps in /etc/sysconfig/slapd
+like
+SLAPD_URLS="ldapi:/// ldap://0.0.0.0:389/ ldaps://0.0.0.0:636/"
+
+
+enable httpd site 

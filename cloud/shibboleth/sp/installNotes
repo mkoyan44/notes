@@ -1,0 +1,33 @@
+LoadModule mod_shib /usr/lib64/shibboleth/mod_shib_24.so
+ShibCompatValidUser Off
+
+# any virthost may server shibb by just enableing module, for that install shibboleth sp
+
+# virt host shouldn't proxy thus dircetive as it resp for assertion consumtion endponts (http-post ) issue wirh http redirect
+<Location /Shibboleth.sso>
+  AuthType None
+  Require all granted
+</Location>
+
+
+# forc to auth 
+<Location /always>
+  AuthType shibboleth
+  ShibRequestSetting requireSession 1
+  require valid-user
+</Location>
+
+# not alwaty if session is set up
+<Location /lazy>
+  AuthType shibboleth
+  ShibRequestSetting requireSession 0
+</Location>
+
+use shib .so files
+export LD_LIBRARY_PATH=/opt/shibboleth/lib64:$LD_LIBRARY_PATH
+
+# customize shibboleth.xml file 
+# generate sp metadata
+ ./metagen.sh -c /etc/httpd/ssl/keystone.sysnet.local/keystone.sysnet.local.crt -h keystone.sysnet.local -e https://keystone.sysnet.local/shibboleth > metadata.xml
+
+ shibd -t for debug

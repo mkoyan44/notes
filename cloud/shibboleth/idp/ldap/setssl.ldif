@@ -1,0 +1,9 @@
+dn: cn=config
+changetype: modify
+replace: olcTLSCertificateFile
+olcTLSCertificateFile: /opt/ssl/ldap.sysnet.local/ldap.sysnet.local.crt
+
+dn: cn=config
+changetype: modify
+replace: olcTLSCertificateKeyFile
+olcTLSCertificateKeyFile: /opt/ssl/ldap.sysnet.local/ldap.sysnet.local.key

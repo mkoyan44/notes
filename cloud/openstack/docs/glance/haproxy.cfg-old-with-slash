@@ -1,0 +1,105 @@
+global
+	log /dev/log	local0
+	log /dev/log	local1 notice
+	chroot /var/lib/haproxy
+	stats socket /var/run/haproxy.sock mode 600 level admin	
+	stats timeout 30s
+	user haproxy
+	group haproxy
+
+	daemon 
+	maxconn 4096 
+	tune.ssl.default-dh-param 2048
+	
+	ssl-default-bind-ciphers ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256
+	
+	ssl-default-bind-options no-sslv3 no-tlsv10 no-tlsv11 no-tls-tickets
+
+	ssl-default-server-ciphers ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256
+
+	ssl-default-server-options no-sslv3 no-tlsv10 no-tlsv11 no-tls-tickets
+
+
+defaults
+	log	global
+	mode	http
+	option redispatch # enbale routing of sessions when fail occure (not see error)
+	option	httplog # log http req,timers,session... spec clf arg for clf format 
+	option	dontlognull # don't log healthchecks from monit or other lb
+	option forwardfor # set X-Forwarded-For header for pass real client ip to backend
+	option http-server-close # kill no longer used clients
+	
+        timeout connect 5000
+	timeout client  10000
+	timeout server  10000
+	timeout check 	3000
+	timeout http-request 15000ms # protect from slow conections,applyes only header of conecetions
+	timeout http-keep-alive 15000ms # this for data 
+
+  	errorfile 400 /etc/haproxy/404.http # error code and point to file
+	errorfile 403 /etc/haproxy/404.http
+   	errorfile 408 /dev/null
+  	errorfile 500 /etc/haproxy/404.http
+  	errorfile 502 /etc/haproxy/404.http
+  	errorfile 503 /etc/haproxy/404.http
+  	errorfile 504 /etc/haproxy/404.http
+
+frontend www-http
+   bind *:80
+   redirect scheme https code 301 if !{ ssl_fc }
+
+frontend www-https
+   bind *:443 ssl crt /etc/ssl/glance.sysnet.local/glance.sysnet.local.pem
+
+   # built-in stats
+   stats enable
+   stats uri /stats
+   stats realm Haproxy\ Statistics
+   # Lock down statistics to authorized user only
+   stats auth admin:admin
+   acl admin_addr src 192.168.1.207/32 #your.ip.add.ress/mask etc.
+   acl stats_path path_beg /stats
+   http-request deny if stats_path !admin_addr
+
+   # api and registry acl /xxxxx
+   acl prefixed-with-api path_beg /api
+   acl prefixed-with-registry path_beg /registry
+   acl host-is-www-example hdr(host) eq glance.sysnet.local
+   
+   use_backend glance-api if prefixed-with-api host-is-www-example
+   use_backend glance-registry if prefixed-with-registry host-is-www-example
+   default_backend no-match
+
+backend glance-api
+    balance source
+    mode http
+    option httpchk /healthcheck
+    http-request set-header Host glance.sysnet.local
+    http-request set-header X-Forwarded-Port 443
+    http-request add-header X-Forwarded-Proto https
+    
+    server api-1 127.0.0.1:9292
+    # Map url path as ProxyPass does
+    reqirep  ^(GET|POST|HEAD)\ /api[/]?(.*)     \1\ /\2
+    # Rewrite redirects as ProxyPassReverse does
+    acl response-is-redirect res.hdr(Location) -m found
+    rspirep ^Location:\ (http|https)://glance.sysnet.local\/(.*)   Location:\ \1://glance.sysnet.local/api\2  if response-is-redirect
+
+
+backend glance-registry
+    balance source
+    mode http
+    option httpchk /healthcheck
+    http-request set-header Host glance.sysnet.local
+    http-request set-header X-Forwarded-Port 443
+    http-request add-header X-Forwarded-Proto https
+    
+    server registry-1 127.0.0.1:9191
+    # Map url path as ProxyPass does
+    reqirep  ^(GET|POST|HEAD)\ /registry[/]?(.*)     \1\ /\2
+    # Rewrite redirects as ProxyPassReverse does
+    acl response-is-redirect res.hdr(Location) -m found
+    rspirep ^Location:\ (http|https)://glance.sysnet.local\/(.*)   Location:\ \1://glance.sysnet.local/registry/\2  if response-is-redirect
+
+
+backend no-match

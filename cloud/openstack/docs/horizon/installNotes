@@ -1,0 +1,9 @@
+
+yum install yum-utils centos-release-openstack-queens.x86_64 -y
+yum-config-manager --enablerepo centos-openstack-queens/x86_64 # install and enable repo
+yum install -y mod_ssl httpd mod_wsgi openstack-dashboard
+
+
+# if the server respond internal error try to remove keyring # pip uninstall keyring memcached
+
+systemctl restart httpd.service memcached

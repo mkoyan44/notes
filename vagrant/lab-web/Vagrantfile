@@ -71,6 +71,5 @@ end
 
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     config.env.enable # enable .env variables
-    vmInstance config,"web",2
-    vmInstance config,"lb",1
+    vmInstance config,"stack",1
 end

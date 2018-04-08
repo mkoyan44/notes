@@ -1,0 +1,51 @@
+# READ UNTIL THE END BEFORE STARTING
+
+copy opentack repo and install nessesary packages
+yum install openstack-glance python-glance python-glanceclient ntpdate -y
+
+
+copy and edit /etc/glance/glance-api.conf conf # resp for taking request from client to store image files
+api interacts with registry service to store img data and metadata in variouse backend.
+keystone endpoints should point to api service only
+
+prepare mysql db for glance, db name glance,user glance , remote address keystone.sysnet.local (my case)
+glance-manage db_sync glance # init db tables
+
+# sql notes
+create database glance;
+use glance;
+
+select id,url from endpoint;
+update endpoint set url = "http://glance.sysnet.local:9292" where id = "b78ba54344a343babeeee4c334377ce5";
+delete from iamges where id="060eb042-560c-4050-b2f0-3162b08f97ef";
+grant all privileges on glance.* to 'glance'@'%' identified by '111';
+grant all privileges on glance.* to 'glance'@'localhost' identified by '111';
+flush privileges;
+
+systemctl restart openstack-glance-api.service openstack-glance-registry.service
+systemctl enable openstack-glance-api.service openstack-glance-registry.service
+systemctl status openstack-glance-api.service openstack-glance-registry.service
+
+tail -f /var/log/glance/{api.log,registry.log} debug
+
+
+mistakes: 
+    haproxy /api with redirects don't accepts from django middlwaare.
+    memcache server don't prefixed with http:// just fqdn
+
+creat user,pss and assign role of admin to glance remote user, add endpoint of glance api
+
+
+openstack user create --domain default --password-prompt glance
+openstack role add --project service --user glance admin
+openstack service create --name glance --description "OpenStack Image service" image # type of service 
+
+openstack endpoint create --region yerevan image public https://glance.sysnet.local # haproxy ssl termination, use attaced config 
+openstack endpoint create --region yerevan image internal https://glance.sysnet.local 
+openstack endpoint create --region yerevan image admin https://glance.sysnet.local 
+
+
+wget http://download.cirros-cloud.net/0.3.4/cirros-0.3.4-x86_64-disk.img
+openstack --os-image-api-version 2 image create  --file cirros-0.3.4-x86_64-disk.img --disk-format vmdk --public cirros_test2 --debug
+
+

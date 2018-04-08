@@ -1,0 +1,13 @@
+dn: ou=People,dc=sysnet.local
+objectClass: top
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+cn: arturmkoyan
+sn: Mkoyan
+givenName: Artur
+initials: AM
+mail: arturmkoyan@sysnet.local
+o: o=devops,c=AM,ou=Organisations,dc=local
+registeredAddress: arturmkoyan@sysnet.local
+UserPassword: 111

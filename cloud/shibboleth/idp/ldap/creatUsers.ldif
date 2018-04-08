@@ -1,0 +1,17 @@
+dn: dc=sysnet,dc=local
+dc: sysnet
+objectClass: top
+objectClass: domain
+
+dn: cn=ldapadmin,dc=sysnet,dc=local
+objectClass: organizationalRole
+cn: ldapadmin
+description: LDAP Manager
+
+dn: ou=People,dc=sysnet,dc=local
+objectClass: organizationalUnit
+ou: People
+
+dn: ou=Group,dc=sysnet,dc=local
+objectClass: organizationalUnit
+ou: Group
