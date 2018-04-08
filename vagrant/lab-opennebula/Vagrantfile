@@ -1,0 +1,107 @@
+require 'socket'
+
+module OS
+    def OS.windows?
+        (/cygwin|mswin|mingw|bccwin|wince|emx/ =~ RUBY_PLATFORM) != nil
+    end
+
+    def OS.mac?
+        (/darwin/ =~ RUBY_PLATFORM) != nil
+    end
+
+    def OS.unix?
+        !OS.windows?
+    end
+
+    def OS.linux?
+        OS.unix? and not OS.mac?
+    end
+end
+
+VAGRANTFILE_API_VERSION = "2"
+# install required plugins if necessary
+if ARGV[0] == 'up'
+    # add required plugins here
+    required_plugins = %w( vagrant-env landrush )
+    #
+    missing_plugins = []
+    required_plugins.each do |plugin|
+        missing_plugins.push(plugin) unless Vagrant.has_plugin? plugin
+    end
+    if ! missing_plugins.empty?
+        install_these = missing_plugins.join(' ')
+        puts "Found missing plugins: #{install_these}.  Installing ..."
+        exec "vagrant plugin install #{install_these};
+        vagrant up"
+    end
+end
+
+def postInstall()
+    if ! OS.windows?
+      if ! File.file?("/etc/dnsmasq.d/vagrant-landrush")
+          hostname = Socket.gethostbyname(Socket.gethostname).first
+          tld = hostname.split('.').last(2).join('.')
+          dnsmasq_landrush="server=/%s/127.0.0.1#10053" % ["#{tld}"]
+          exec "sudo apt-get install -y resolvconf dnsmasq || yum install dnsmasq -y;
+          echo #{dnsmasq_landrush} |sudo tee -a /etc/dnsmasq.d/vagrant-landrush;
+          /etc/init.d/dnsmasq restart || systemctl restart dnsmasq;"
+      end
+    else
+      puts "Config landrush dns to point localhost..."
+      cmd = %Q[netsh interface ipv4 add dnsserver "VirtualBox Host-Only Network" address=127.0.0.1 index=1]
+      exec "#{cmd}"
+    end
+end
+
+def vmInstance(config,hostname,nbInstance="1",isDeploySSH = false)
+    puts "vminstalnce"
+    config.vm.synced_folder "sharedVM", "/srv"
+    if isDeploySSH
+      ssh_pub_key = File.readlines("#{ENV['HOME']}/.ssh/id_rsa.pub").first.strip
+        config.vm.provision "shell", inline: <<-EOC
+            echo "#{ssh_pub_key}" | sudo tee -a /home/vagrant/.ssh/authorized_keys
+            mkdir -p /root/.ssh/
+            echo "#{ssh_pub_key}" | sudo tee -a /root/.ssh/authorized_keys
+            sudo systemctl restart sshd
+        EOC
+    end
+    # dns
+    config.landrush.enabled = true
+    config.landrush.host_interface_class = :ipv4
+    config.landrush.host_interface = 'eth1'
+    config.landrush.tld = ENV['FQDN']
+
+    config.vm.provision "shell", inline: <<-EOC
+        echo 'PermitRootLogin yes'| sudo tee -a /etc/ssh/sshd_config
+        echo "#{ssh_pub_key}" | sudo tee -a /home/vagrant/.ssh/authorized_keys
+        sudo cp -rf /home/vagrant/.ssh /root
+        echo "#{ssh_pub_key}" | sudo tee -a /root/.ssh/authorized_keys
+        sudo systemctl restart sshd
+    EOC
+
+    (1..Integer("#{nbInstance}" || 1)).each do |i|
+
+        config.vm.define :"#{hostname}#{i}" do |vmc|
+
+                vmc.vm.box = ENV['BOX_NAME']
+                vmc.vm.hostname = "#{hostname}" + "#{i}" + "." + ENV['FQDN']
+                vmc.vm.network :private_network,
+                    type: "dhcp"
+
+                vmc.vm.provider "virtualbox" do |vb|
+                    vb.memory = ENV['VM_MEM']
+                    vb.name = "#{hostname}" + "#{i}" + "." +  ENV['FQDN']
+                    vb.customize ["modifyvm", :id, "--cpus", ENV['VM_NBCPU']]
+                    vb.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]
+                    vb.customize ["guestproperty", "set", :id, "/VirtualBox/GuestAdd/VBoxService/--timesync-set-threshold", 10000 ]
+                end
+                vmc.vm.provision :shell, path: "bootstrap.sh"
+        end
+    end
+end
+
+Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+    config.env.enable # enable .env variables
+    vmInstance config,"lb",1
+    #postInstall
+end

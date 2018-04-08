@@ -1,3 +1,43 @@
+<<<<<<< HEAD
+version: '2'
+
+volumes:
+  nextcloud:
+  db:
+  swift:
+
+services:
+  db:
+    image: mariadb
+    restart: always
+    volumes:
+      - db:/var/lib/mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=111
+      - MYSQL_PASSWORD=111
+      - MYSQL_DATABASE=nextcloud
+      - MYSQL_USER=nextcloud
+
+  app:
+    image: nextcloud
+    ports:
+      - 8080:80
+    links:
+      - db
+    volumes:
+      - nextcloud:/var/www/html
+    restart: always
+
+  swift:
+    image: swift
+    ports:
+      - 8081:80
+    links:
+      - app
+    volumes:
+      - swift:/srv
+    restart: always
+=======
 version: '2.1'
 
 volumes:
@@ -124,3 +164,4 @@ services:
     depends_on: 
       - kstone
     
+>>>>>>> 9bacea0c0cada48ab6eb9218fad5013367aaf803
