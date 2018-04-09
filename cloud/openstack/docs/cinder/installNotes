@@ -1,0 +1,42 @@
+# create database in central db and assign all privilagies to the user
+mysql -u root -p111 -h keystone.sysnet.local
+create database cinder
+grant all privileges on cinder.* to 'glance'@'%' identified by '111';
+grant all privileges on cinder.* to 'glance'@'localhost' identified by '111';
+flush privileges;
+
+# install required packages
+yum install openstack-cinder  lvm2 device-mapper-persistent-data targetcli python-keystone
+
+ openstack user create --domain default --password 111 cinder
+ openstack role add --project admin --user cinder admin
+# create opentack admin user
+ openstack service create --name cinderV2 --description "block storage" volumev2
+ openstack service create --name cinderV3 --description "block storage v3" volumev3
+ # create service type of volume{v2,v3}
+ openstack endpoint create --region yerevan volumeV2 admin https://cinder.sysnet.local:8775/v2/%\(project_id\)s
+ openstack endpoint create --region yerevan volumeV2 public https://cinder.sysnet.local:8775/v2/%\(project_id\)s
+ openstack endpoint create --region yerevan volumeV2 internal https://cinder.sysnet.local:8775/v2/%\(project_id\)s
+ openstack endpoint create --region yerevan volumeV3 admin https://cinder.sysnet.local:8775/v2/%\(project_id\)s
+ openstack endpoint create --region yerevan volumeV3 public https://cinder.sysnet.local:8775/v2/%\(project_id\)s
+ openstack endpoint create --region yerevan volumeV3 internal https://cinder.sysnet.local:8775/v2/%\(project_id\)s
+# create endpoints, make sure service name matches with endpoint name also points to haporxy ssl terminated port
+# cinder api run on 8776 but haproxy listen on ssl enabled 8875 port and forward to 8776
+# make sure rabbitmq user have access to server with pass 111
+
+# section cinder
+fdisk  /dev/sdb # n,p,t:8e
+pvcreate /dev/sdb1
+vgcreate cinder-volume /dev/sdb1
+# /etc/lvm/lvm and add it on device section. tihs filter ensures that only lvm enabled device will be scaned by lvm manager.
+# regexp is simple, a for allow , r for reject
+filter = [ "a|/dev/sda|", "a|/dev/sdb|", "r|/.*/|"]  :
+vgscan #  to reload caches
+
+# use haproxy template for ssl termnation,copy it to /etc/haproxy
+# cinder.conf to /etc/cinder/ # adapt configs to you own env, and volume_group points to right vg
+
+systemctl enable,restart -l  openstack-cinder-api.service openstack-cinder-scheduler.service openstack-cinder-volume.service target.service
+log is in /var/log/cinder
+# check available services
+openstack volume service list

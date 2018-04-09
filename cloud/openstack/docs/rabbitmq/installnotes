@@ -1,0 +1,16 @@
+
+yum install rabbitmq-server -y
+systemctl enable,restart rabbitmq-server.service
+# install and start
+rabbitmqctl  add_user rabbitmq 111
+rabbitmqctl set_permissions rabbitmq ".*" ".*" ".*"
+rabbitmqctl set_user_tags rabbitmq administrator
+# add user,assign to admins, set full permission
+rabbitmqctl list_users
+rabbitmqctl delete_user guest
+rabbitmqctl list_users
+rabbitmqctl stop_app
+rabbitmqctl start_app
+# delete guesst and restart
+netstat -tuplpn |grep -i beam
+# make sure that it's binded  to 0.0.0.0 
